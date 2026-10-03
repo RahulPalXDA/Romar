@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ForgotPasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ResendOtpRequest;
 use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Requests\VerifyOtpRequest;
 use App\Mail\SendOtpMail;
@@ -38,7 +39,7 @@ class AuthController extends Controller
             'otp_expires_at' => now()->addMinutes(10),
         ]);
 
-        Mail::mailer('log')->to($user->email)->send(
+        Mail::to($user->email)->send(
             new SendOtpMail($otp, 'Email Verification')
         );
 
@@ -107,6 +108,38 @@ class AuthController extends Controller
                 'token_type' => 'Bearer',
                 'user' => $user,
             ],
+        ], 200);
+    }
+
+    /**
+     * Resend the verification OTP code to the user's email.
+     */
+    public function resendOtp(ResendOtpRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $user = User::where('email', $validated['email'])->first();
+
+        if ($user->email_verification_status) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Email is already verified.',
+            ], 400);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+
+        $user->forceFill([
+            'otp_code' => $otp,
+            'otp_expires_at' => now()->addMinutes(10),
+        ])->save();
+
+        Mail::to($user->email)->send(
+            new SendOtpMail($otp, 'Email Verification Resend')
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'A new OTP has been sent to your email address.',
         ], 200);
     }
 
@@ -185,7 +218,7 @@ class AuthController extends Controller
             'otp_expires_at' => now()->addMinutes(10),
         ])->save();
 
-        Mail::mailer('log')->to($user->email)->send(
+        Mail::to($user->email)->send(
             new SendOtpMail($otp, 'Password Reset')
         );
 
