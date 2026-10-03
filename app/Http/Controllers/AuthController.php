@@ -76,11 +76,11 @@ class AuthController extends Controller
             'account_status' => 'active',
             'role' => 'user',
             'otp_code' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
+            'otp_expires_at' => now()->addMinutes(3),
         ]);
 
         Mail::to($user->email)->send(
-            new SendOtpMail($otp, 'Email Verification')
+            new SendOtpMail($otp, $user->name, 'Email Verification')
         );
 
         return response()->json([
@@ -239,11 +239,11 @@ class AuthController extends Controller
 
         $user->forceFill([
             'otp_code' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
+            'otp_expires_at' => now()->addMinutes(3),
         ])->save();
 
         Mail::to($user->email)->send(
-            new SendOtpMail($otp, 'Email Verification Resend')
+            new SendOtpMail($otp, $user->name, 'Email Verification Resend')
         );
 
         return response()->json([
@@ -394,11 +394,11 @@ class AuthController extends Controller
 
         $user->forceFill([
             'otp_code' => $otp,
-            'otp_expires_at' => now()->addMinutes(10),
+            'otp_expires_at' => now()->addMinutes(3),
         ])->save();
 
-        Mail::mailer('log')->to($user->email)->send(
-            new SendOtpMail($otp, 'Password Reset')
+        Mail::to($user->email)->send(
+            new SendOtpMail($otp, $user->name, 'Password Reset')
         );
 
         return response()->json([

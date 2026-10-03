@@ -18,6 +18,7 @@ class SendOtpMail extends Mailable
      */
     public function __construct(
         public string $otp,
+        public string $name = 'User',
         public string $purpose = 'Email Verification'
     ) {}
 
@@ -40,6 +41,7 @@ class SendOtpMail extends Mailable
             view: 'emails.otp',
             with: [
                 'otp' => $this->otp,
+                'name' => $this->name,
                 'purpose' => $this->purpose,
             ],
         );

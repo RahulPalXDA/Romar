@@ -3,69 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $purpose }} OTP</title>
+    <title>{{ $purpose }}</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f6f8;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f9fafb;
             margin: 0;
-            padding: 24px;
-            color: #333333;
+            padding: 40px 20px;
+            color: #374151;
+            line-height: 1.6;
         }
         .container {
-            max-width: 560px;
+            max-width: 500px;
             margin: 0 auto;
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 32px;
-            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            padding: 40px 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            text-align: center;
         }
         .header {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1a202c;
-            margin-bottom: 16px;
-        }
-        .otp-box {
-            background-color: #f7fafc;
-            border: 2px dashed #cbd5e0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin: 24px 0;
-        }
-        .otp-code {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 800;
-            letter-spacing: 8px;
-            color: #2b6cb0;
+            color: #002b5b;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
         }
-        .expiry-text {
-            font-size: 14px;
-            color: #718096;
-            margin-top: 8px;
+        p {
+            font-size: 16px;
+            margin: 0 0 24px 0;
+            color: #4b5563;
+        }
+        .otp-highlight {
+            display: inline-block;
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            background-color: #f3f4f6;
+            padding: 12px 24px;
+            border-radius: 8px;
+            letter-spacing: 4px;
+            margin: 8px 0;
         }
         .footer {
-            font-size: 12px;
-            color: #a0aec0;
-            margin-top: 24px;
-            text-align: center;
+            font-size: 13px;
+            color: #9ca3af;
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid #f3f4f6;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">{{ config('app.name') }} - {{ $purpose }}</div>
-        <p>Hello,</p>
-        <p>Please use the following One-Time Password (OTP) to complete your request for <strong>{{ $purpose }}</strong>:</p>
+        <div class="header">Roamer</div>
+        
+        @if($purpose === 'Email Verification' || $purpose === 'Email Verification Resend')
+            <p>Hi {{ $name }}, welcome to Roamer!</p>
+        @else
+            <p>Hi {{ $name }}, here is your {{ $purpose }} code!</p>
+        @endif
 
-        <div class="otp-box">
-            <div class="otp-code">{{ $otp }}</div>
-            <div class="expiry-text">This code will expire in 10 minutes.</div>
+        <p>Your verification code is:<br>
+        <span class="otp-highlight">{{ $otp }}</span><br>
+        <span style="font-size: 14px; color: #6b7280;">It expires in 3 minutes.</span></p>
+
+        <p style="font-size: 14px; margin-bottom: 0;">If you didn't create a Roamer account, you can safely ignore this email.</p>
+        
+        <div class="footer">
+            &copy; {{ date('Y') }} Roamer. All rights reserved.
         </div>
-
-        <p>If you did not make this request, please disregard this email or contact support if you suspect unauthorized activity.</p>
-        <div class="footer">&copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.</div>
     </div>
 </body>
 </html>
