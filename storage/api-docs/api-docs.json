@@ -21,7 +21,7 @@
                     "Authentication"
                 ],
                 "summary": "Register a new user",
-                "description": "Registers a new user account, assigns default role ('user' or 'vendor'), and sends an OTP code for email verification.",
+                "description": "Registers a new user account with default 'user' role and sends an OTP code for email verification.",
                 "operationId": "48e49e48019e8b141753cb515a26100b",
                 "requestBody": {
                     "required": true,
@@ -58,15 +58,6 @@
                                         "type": "string",
                                         "format": "password",
                                         "example": "SecurePass123"
-                                    },
-                                    "role": {
-                                        "type": "string",
-                                        "example": "user",
-                                        "nullable": true,
-                                        "enum": [
-                                            "user",
-                                            "vendor"
-                                        ]
                                     }
                                 },
                                 "type": "object"

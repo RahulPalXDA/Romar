@@ -474,39 +474,53 @@ class AuthTest extends TestCase
         $subsequentResponse->assertStatus(401);
     }
 
-    public function test_user_can_register_as_vendor(): void
+    public function test_registration_ignores_and_strips_role_in_payload_defaulting_to_user(): void
     {
         Mail::fake();
 
         $response = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Vendor Store',
-            'email' => 'vendor@example.com',
-            'password' => 'SecurePass123',
-            'password_confirmation' => 'SecurePass123',
-            'role' => 'vendor',
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonPath('data.user.role', 'vendor');
-
-        $this->assertDatabaseHas('users', [
-            'email' => 'vendor@example.com',
-            'role' => 'vendor',
-        ]);
-    }
-
-    public function test_user_cannot_register_with_admin_role(): void
-    {
-        $response = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Admin Attempt',
-            'email' => 'admin@example.com',
+            'name' => 'Bad Actor',
+            'email' => 'badactor@example.com',
             'password' => 'SecurePass123',
             'password_confirmation' => 'SecurePass123',
             'role' => 'admin',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['role']);
+        $response->assertStatus(201)
+            ->assertJsonPath('data.user.role', 'user');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'badactor@example.com',
+            'role' => 'user',
+        ]);
+    }
+
+    public function test_registration_ignores_arbitrary_injected_payload_fields(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Injection Test',
+            'email' => 'inject@example.com',
+            'password' => 'SecurePass123',
+            'password_confirmation' => 'SecurePass123',
+            'role' => 'vendor',
+            'email_verification_status' => true,
+            'account_status' => 'suspended',
+            'is_admin' => 1,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.user.role', 'user')
+            ->assertJsonPath('data.user.email_verification_status', false)
+            ->assertJsonPath('data.user.account_status', 'active');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'inject@example.com',
+            'role' => 'user',
+            'email_verification_status' => false,
+            'account_status' => 'active',
+        ]);
     }
 
     public function test_user_model_role_helper_methods(): void

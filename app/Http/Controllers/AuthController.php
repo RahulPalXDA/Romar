@@ -25,7 +25,7 @@ class AuthController extends Controller
     #[OA\Post(
         path: '/api/v1/auth/register',
         summary: 'Register a new user',
-        description: "Registers a new user account, assigns default role ('user' or 'vendor'), and sends an OTP code for email verification.",
+        description: "Registers a new user account with default 'user' role and sends an OTP code for email verification.",
         tags: ['Authentication'],
         requestBody: new OA\RequestBody(
             required: true,
@@ -37,7 +37,6 @@ class AuthController extends Controller
                     new OA\Property(property: 'mobile_number', type: 'string', example: '9876543210', nullable: true),
                     new OA\Property(property: 'password', type: 'string', format: 'password', example: 'SecurePass123'),
                     new OA\Property(property: 'password_confirmation', type: 'string', format: 'password', example: 'SecurePass123'),
-                    new OA\Property(property: 'role', type: 'string', enum: ['user', 'vendor'], example: 'user', nullable: true),
                 ]
             )
         ),
@@ -64,18 +63,18 @@ class AuthController extends Controller
     )]
     public function register(RegisterRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $data = $request->only(['name', 'email', 'mobile_number', 'password']);
 
         $otp = (string) random_int(100000, 999999);
 
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'mobile_number' => $validated['mobile_number'] ?? null,
-            'password' => $validated['password'],
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'mobile_number' => $data['mobile_number'] ?? null,
+            'password' => $data['password'],
             'email_verification_status' => false,
             'account_status' => 'active',
-            'role' => $validated['role'] ?? 'user',
+            'role' => 'user',
             'otp_code' => $otp,
             'otp_expires_at' => now()->addMinutes(10),
         ]);
@@ -147,9 +146,9 @@ class AuthController extends Controller
     )]
     public function verifyOtp(VerifyOtpRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $data = $request->only(['email', 'otp']);
 
-        $user = User::where('email', $validated['email'])->first();
+        $user = User::where('email', $data['email'])->first();
 
         if (! $user) {
             return response()->json([
@@ -158,7 +157,7 @@ class AuthController extends Controller
             ], 404);
         }
 
-        if (! $user->otp_code || $user->otp_code !== $validated['otp']) {
+        if (! $user->otp_code || $user->otp_code !== $data['otp']) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid OTP code provided.',
@@ -226,8 +225,8 @@ class AuthController extends Controller
     )]
     public function resendOtp(ResendOtpRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $user = User::where('email', $validated['email'])->first();
+        $data = $request->only(['email']);
+        $user = User::where('email', $data['email'])->first();
 
         if ($user->email_verification_status) {
             return response()->json([
@@ -298,13 +297,13 @@ class AuthController extends Controller
     )]
     public function login(LoginRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $data = $request->only(['login', 'password']);
 
-        $user = User::where('email', $validated['login'])
-            ->orWhere('mobile_number', $validated['login'])
+        $user = User::where('email', $data['login'])
+            ->orWhere('mobile_number', $data['login'])
             ->first();
 
-        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid credentials provided.',
@@ -373,9 +372,9 @@ class AuthController extends Controller
     )]
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $data = $request->only(['email']);
 
-        $user = User::where('email', $validated['email'])->first();
+        $user = User::where('email', $data['email'])->first();
 
         if (! $user) {
             return response()->json([
@@ -446,9 +445,9 @@ class AuthController extends Controller
     )]
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $data = $request->only(['email', 'otp', 'password']);
 
-        $user = User::where('email', $validated['email'])->first();
+        $user = User::where('email', $data['email'])->first();
 
         if (! $user) {
             return response()->json([
@@ -457,7 +456,7 @@ class AuthController extends Controller
             ], 404);
         }
 
-        if (! $user->otp_code || $user->otp_code !== $validated['otp']) {
+        if (! $user->otp_code || $user->otp_code !== $data['otp']) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid OTP code provided.',
@@ -472,7 +471,7 @@ class AuthController extends Controller
         }
 
         $user->forceFill([
-            'password' => $validated['password'],
+            'password' => $data['password'],
             'otp_code' => null,
             'otp_expires_at' => null,
         ])->save();
