@@ -33,6 +33,7 @@ class AuthController extends Controller
             'password' => $validated['password'],
             'email_verification_status' => false,
             'account_status' => 'active',
+            'role' => $validated['role'] ?? 'user',
             'otp_code' => $otp,
             'otp_expires_at' => now()->addMinutes(10),
         ]);
@@ -50,6 +51,7 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'mobile_number' => $user->mobile_number,
+                    'role' => $user->role,
                     'email_verification_status' => $user->email_verification_status,
                     'account_status' => $user->account_status,
                     'created_at' => $user->created_at,

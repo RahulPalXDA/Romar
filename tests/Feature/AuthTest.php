@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Mail\SendOtpMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -39,6 +41,7 @@ class AuthTest extends TestCase
                         'name',
                         'email',
                         'mobile_number',
+                        'role',
                         'email_verification_status',
                         'account_status',
                     ],
@@ -48,6 +51,7 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'john@example.com',
             'mobile_number' => '1234567890',
+            'role' => 'user',
             'email_verification_status' => false,
             'account_status' => 'active',
         ]);
@@ -410,5 +414,95 @@ class AuthTest extends TestCase
             ->getJson('/api/v1/auth/me');
 
         $subsequentResponse->assertStatus(401);
+    }
+
+    public function test_user_can_register_as_vendor(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Vendor Store',
+            'email' => 'vendor@example.com',
+            'password' => 'SecurePass123',
+            'password_confirmation' => 'SecurePass123',
+            'role' => 'vendor',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.user.role', 'vendor');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'vendor@example.com',
+            'role' => 'vendor',
+        ]);
+    }
+
+    public function test_user_cannot_register_with_admin_role(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'name' => 'Admin Attempt',
+            'email' => 'admin@example.com',
+            'password' => 'SecurePass123',
+            'password_confirmation' => 'SecurePass123',
+            'role' => 'admin',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['role']);
+    }
+
+    public function test_user_model_role_helper_methods(): void
+    {
+        $user = User::factory()->create();
+        $this->assertTrue($user->isUser());
+        $this->assertFalse($user->isAdmin());
+        $this->assertFalse($user->isVendor());
+        $this->assertTrue($user->hasRole('user'));
+        $this->assertTrue($user->hasRole(UserRole::USER));
+
+        $admin = User::factory()->admin()->create();
+        $this->assertTrue($admin->isAdmin());
+        $this->assertFalse($admin->isUser());
+        $this->assertTrue($admin->hasRole('admin'));
+
+        $vendor = User::factory()->vendor()->create();
+        $this->assertTrue($vendor->isVendor());
+        $this->assertFalse($vendor->isAdmin());
+        $this->assertTrue($vendor->hasRole('vendor'));
+    }
+
+    public function test_role_middleware_authorizes_correct_role(): void
+    {
+        Route::get('/api/test-admin-only', function () {
+            return response()->json(['message' => 'welcome admin']);
+        })->middleware(['auth:sanctum', 'role:admin']);
+
+        $admin = User::factory()->admin()->create();
+        $token = $admin->createToken('admin_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/test-admin-only');
+
+        $response->assertStatus(200)
+            ->assertJson(['message' => 'welcome admin']);
+    }
+
+    public function test_role_middleware_blocks_unauthorized_role(): void
+    {
+        Route::get('/api/test-admin-route', function () {
+            return response()->json(['message' => 'welcome admin']);
+        })->middleware(['auth:sanctum', 'role:admin']);
+
+        $user = User::factory()->create();
+        $token = $user->createToken('user_token')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/test-admin-route');
+
+        $response->assertStatus(403)
+            ->assertJson([
+                'status' => 'error',
+                'message' => 'Forbidden. You do not have permission to access this resource.',
+            ]);
     }
 }
