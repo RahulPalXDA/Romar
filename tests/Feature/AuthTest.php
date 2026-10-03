@@ -169,6 +169,64 @@ class AuthTest extends TestCase
             ]);
     }
 
+    public function test_user_can_resend_otp_successfully(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->unverified()->create([
+            'email' => 'resend@example.com',
+            'otp_code' => '111222',
+            'otp_expires_at' => now()->subMinutes(5),
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/resend-otp', [
+            'email' => 'resend@example.com',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'status' => 'success',
+                'message' => 'A new OTP has been sent to your email address.',
+            ]);
+
+        $user->refresh();
+        $this->assertNotEquals('111222', $user->otp_code);
+        $this->assertEquals(6, strlen($user->otp_code));
+        $this->assertTrue($user->otp_expires_at->isFuture());
+
+        Mail::assertSent(SendOtpMail::class, function ($mail) use ($user) {
+            return $mail->hasTo('resend@example.com') && $mail->otp === $user->otp_code;
+        });
+    }
+
+    public function test_resend_otp_fails_if_email_already_verified(): void
+    {
+        User::factory()->create([
+            'email' => 'verified@example.com',
+            'email_verification_status' => true,
+        ]);
+
+        $response = $this->postJson('/api/v1/auth/resend-otp', [
+            'email' => 'verified@example.com',
+        ]);
+
+        $response->assertStatus(400)
+            ->assertJson([
+                'status' => 'error',
+                'message' => 'Email is already verified.',
+            ]);
+    }
+
+    public function test_resend_otp_fails_for_non_existent_email(): void
+    {
+        $response = $this->postJson('/api/v1/auth/resend-otp', [
+            'email' => 'ghost@example.com',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['email']);
+    }
+
     public function test_user_can_login_with_email(): void
     {
         $user = User::factory()->create([
